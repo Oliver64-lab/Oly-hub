@@ -1,194 +1,103 @@
--- Oly Hub
--- Saber Legends
--- Combat Edition
+-- Oly Hub - Saber Legends
+-- V3 (AutoSwing + Smart Block + Perfect Block + Stamina Boost)
 
-local Players = game:GetService("Players")
-local RunService = game:GetService("RunService")
+-- Venyx UI
+local Library = loadstring(game:HttpGet("https://raw.githubusercontent.com/Skidware/venyx-library/main/VenyxLibrary.lua"))()
+local Window = Library:CreateWindow("Oly Hub | Saber Legends")
 
-local player = Players.LocalPlayer
+-- Tabs
+local Combat = Window:CreateTab("Combat")
 
-------------------------------------------------
--- ORION UI
-------------------------------------------------
+-- Sections
+local CombatSection = Combat:CreateSection("Combat Settings")
 
-local OrionLib = loadstring(game:HttpGet("https://raw.githubusercontent.com/shlexware/Orion/main/source"))()
-
-local Window = OrionLib:MakeWindow({
-	Name = "Oly Hub | Saber Legends",
-	HidePremium = false,
-	SaveConfig = false
-})
-
-local Combat = Window:MakeTab({
-	Name = "Combat",
-	Icon = "rbxassetid://4483345998"
-})
-
-------------------------------------------------
--- VARIABLES
-------------------------------------------------
-
+-- Variables
 local AutoSwing = false
-local AutoBlock = false
+local SmartBlock = false
 local PerfectBlock = false
-local InfStamina = false
+local BlockChance = 50
+local StaminaBoost = false
 
-------------------------------------------------
--- AUTO SWING
-------------------------------------------------
-
-Combat:AddToggle({
-	Name = "Auto Swing",
-	Default = false,
-	Callback = function(Value)
-		AutoSwing = Value
-	end
-})
-
-RunService.RenderStepped:Connect(function()
-
-	if not AutoSwing then return end
-
-	local char = player.Character
-	if not char then return end
-
-	local tool = char:FindFirstChildOfClass("Tool")
-
-	if tool then
-		tool:Activate()
-	end
-
+-- Toggles
+CombatSection:CreateToggle("Auto Swing", nil, function(value)
+    AutoSwing = value
 end)
 
-------------------------------------------------
--- AUTO BLOCK
-------------------------------------------------
+CombatSection:CreateToggle("Smart Block", nil, function(value)
+    SmartBlock = value
+end)
 
-Combat:AddToggle({
-	Name = "Auto Block",
-	Default = false,
-	Callback = function(Value)
-		AutoBlock = Value
-	end
-})
+CombatSection:CreateToggle("Perfect Block", nil, function(value)
+    PerfectBlock = value
+end)
 
+CombatSection:CreateSlider("Block Chance", 1, 100, function(value)
+    BlockChance = value
+end)
+
+CombatSection:CreateToggle("Stamina Boost", nil, function(value)
+    StaminaBoost = value
+end)
+
+-- Services
+local RunService = game:GetService("RunService")
+local Players = game:GetService("Players")
+
+-- Main logic
 RunService.Heartbeat:Connect(function()
 
-	if not AutoBlock then return end
+    local char = player.Character
+    if not char then return end
 
-	local char = player.Character
-	if not char then return end
+    local hrp = char:FindFirstChild("HumanoidRootPart")
+    if not hrp then return end
 
-	local hrp = char:FindFirstChild("HumanoidRootPart")
+    local tool = char:FindFirstChildOfClass("Tool")
 
-	for _,enemy in pairs(Players:GetPlayers()) do
+    -- Auto Swing (attack automatically when enemy close)
+    if AutoSwing and tool then
+        for _,enemy in pairs(Players:GetPlayers()) do
+            if enemy ~= player and enemy.Character then
+                local enemyHrp = enemy.Character:FindFirstChild("HumanoidRootPart")
+                if enemyHrp and (enemyHrp.Position - hrp.Position).Magnitude <= 12 then
+                    tool:Activate()
+                end
+            end
+        end
+    end
 
-		if enemy ~= player and enemy.Character then
+    -- Smart Block / Perfect Block
+    if (SmartBlock or PerfectBlock) and tool then
+        for _,enemy in pairs(Players:GetPlayers()) do
+            if enemy ~= player and enemy.Character then
+                local enemyHrp = enemy.Character:FindFirstChild("HumanoidRootPart")
+                if enemyHrp then
+                    local dist = (enemyHrp.Position - hrp.Position).Magnitude
+                    if dist <= 8 then
+                        local chance = BlockChance
 
-			local root = enemy.Character:FindFirstChild("HumanoidRootPart")
+                        -- boost perfect block when very close
+                        if PerfectBlock then
+                            chance = chance + 20
+                        end
 
-			if root then
+                        if math.random(1,100) <= chance then
+                            tool:Activate()
+                        end
+                    end
+                end
+            end
+        end
+    end
 
-				local dist = (hrp.Position - root.Position).Magnitude
-
-				if dist < 10 then
-
-					local tool = char:FindFirstChildOfClass("Tool")
-
-					if tool then
-						tool:Activate()
-					end
-
-				end
-
-			end
-
-		end
-
-	end
-
-end)
-
-------------------------------------------------
--- PERFECT BLOCK
-------------------------------------------------
-
-Combat:AddToggle({
-	Name = "Perfect Block",
-	Default = false,
-	Callback = function(Value)
-		PerfectBlock = Value
-	end
-})
-
-RunService.Heartbeat:Connect(function()
-
-	if not PerfectBlock then return end
-
-	local char = player.Character
-	if not char then return end
-
-	local hrp = char:FindFirstChild("HumanoidRootPart")
-
-	for _,enemy in pairs(Players:GetPlayers()) do
-
-		if enemy ~= player and enemy.Character then
-
-			local hum = enemy.Character:FindFirstChildOfClass("Humanoid")
-
-			if hum then
-
-				for _,track in pairs(hum:GetPlayingAnimationTracks()) do
-
-					if track.IsPlaying then
-
-						task.wait(0.1)
-
-						local tool = char:FindFirstChildOfClass("Tool")
-
-						if tool then
-							tool:Activate()
-						end
-
-					end
-
-				end
-
-			end
-
-		end
-
-	end
+    -- Stamina Boost (client attempt)
+    if StaminaBoost then
+        local stamina = char:FindFirstChild("Stamina")
+        if stamina and stamina.Value < stamina.MaxValue then
+            stamina.Value = stamina.MaxValue
+        end
+    end
 
 end)
 
-------------------------------------------------
--- INFINITE STAMINA
-------------------------------------------------
-
-Combat:AddToggle({
-	Name = "Infinite Stamina",
-	Default = false,
-	Callback = function(Value)
-		InfStamina = Value
-	end
-})
-
-RunService.Heartbeat:Connect(function()
-
-	if not InfStamina then return end
-
-	local char = player.Character
-	if not char then return end
-
-	local stamina = char:FindFirstChild("Stamina")
-
-	if stamina then
-		stamina.Value = stamina.MaxValue
-	end
-
-end)
-
-------------------------------------------------
-
-OrionLib:Init()
+print("Oly Hub - Saber Legends loaded!")
