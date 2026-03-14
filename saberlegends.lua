@@ -1,9 +1,8 @@
--- Oly Hub - Saber Legends
+-- Oly Hub V2 - Saber Legends (Mobile + PC)
 
 local Players = game:GetService("Players")
-local UIS = game:GetService("UserInputService")
 local RunService = game:GetService("RunService")
-local VirtualInputManager = game:GetService("VirtualInputManager")
+local UIS = game:GetService("UserInputService")
 
 local player = Players.LocalPlayer
 
@@ -11,26 +10,30 @@ local player = Players.LocalPlayer
 local Rayfield = loadstring(game:HttpGet("https://sirius.menu/rayfield"))()
 
 local Window = Rayfield:CreateWindow({
-   Name = "Oly Hub - Saber Legends",
+   Name = "Oly Hub - Saber Legends V2",
    LoadingTitle = "Oly Hub",
-   LoadingSubtitle = "by Oly"
+   LoadingSubtitle = "Mobile Friendly"
 })
 
 local Combat = Window:CreateTab("Combat")
 local PlayerTab = Window:CreateTab("Player")
-local Teleport = Window:CreateTab("Teleport")
 
 ------------------------------------------------
 -- SPEED
 ------------------------------------------------
 
 PlayerTab:CreateSlider({
-   Name = "Speed",
-   Range = {16,100},
+   Name = "WalkSpeed",
+   Range = {16,35},
    Increment = 1,
    CurrentValue = 16,
    Callback = function(Value)
-      player.Character.Humanoid.WalkSpeed = Value
+
+      local char = player.Character
+      if char then
+         char:FindFirstChildOfClass("Humanoid").WalkSpeed = Value
+      end
+
    end
 })
 
@@ -38,46 +41,52 @@ PlayerTab:CreateSlider({
 -- INFINITE JUMP
 ------------------------------------------------
 
-_G.InfJump = false
+local InfJump = false
 
 PlayerTab:CreateToggle({
    Name = "Infinite Jump",
    CurrentValue = false,
    Callback = function(Value)
-      _G.InfJump = Value
+      InfJump = Value
    end
 })
 
 UIS.JumpRequest:Connect(function()
-   if _G.InfJump then
-      player.Character:FindFirstChildOfClass("Humanoid"):ChangeState("Jumping")
+
+   if InfJump then
+
+      local hum = player.Character:FindFirstChildOfClass("Humanoid")
+      hum:ChangeState("Jumping")
+
    end
+
 end)
 
 ------------------------------------------------
 -- AUTO ATTACK
 ------------------------------------------------
 
-_G.AutoAttack = false
+local AutoAttack = false
 
 Combat:CreateToggle({
    Name = "Auto Attack",
    CurrentValue = false,
    Callback = function(Value)
-      _G.AutoAttack = Value
+      AutoAttack = Value
    end
 })
 
 RunService.RenderStepped:Connect(function()
 
-   if _G.AutoAttack then
+   if not AutoAttack then return end
 
-      local tool = player.Character:FindFirstChildOfClass("Tool")
+   local char = player.Character
+   if not char then return end
 
-      if tool then
-         tool:Activate()
-      end
+   local tool = char:FindFirstChildOfClass("Tool")
 
+   if tool then
+      tool:Activate()
    end
 
 end)
@@ -87,7 +96,7 @@ end)
 ------------------------------------------------
 
 local PerfectBlock = false
-local BlockChance = 50
+local BlockChance = 70
 local BlockDistance = 12
 
 Combat:CreateToggle({
@@ -99,10 +108,10 @@ Combat:CreateToggle({
 })
 
 Combat:CreateSlider({
-   Name = "Block Chance",
+   Name = "Block Chance %",
    Range = {1,100},
    Increment = 1,
-   CurrentValue = 50,
+   CurrentValue = 70,
    Callback = function(Value)
       BlockChance = Value
    end
@@ -122,19 +131,21 @@ RunService.Heartbeat:Connect(function()
 
       if enemy ~= player and enemy.Character then
 
-         local enemyRoot = enemy.Character:FindFirstChild("HumanoidRootPart")
+         local root = enemy.Character:FindFirstChild("HumanoidRootPart")
 
-         if enemyRoot then
+         if root then
 
-            local dist = (hrp.Position - enemyRoot.Position).Magnitude
+            local dist = (hrp.Position - root.Position).Magnitude
 
             if dist <= BlockDistance then
 
                if math.random(1,100) <= BlockChance then
 
-                  VirtualInputManager:SendKeyEvent(true,"F",false,game)
-                  task.wait(0.1)
-                  VirtualInputManager:SendKeyEvent(false,"F",false,game)
+                  local tool = char:FindFirstChildOfClass("Tool")
+
+                  if tool then
+                     tool:Activate()
+                  end
 
                end
 
@@ -149,12 +160,11 @@ RunService.Heartbeat:Connect(function()
 end)
 
 ------------------------------------------------
--- AUTO PARRY (SMART)
+-- AUTO PARRY (Improved)
 ------------------------------------------------
 
 local AutoParry = false
 local ParryDistance = 10
-local ParryDelay = 0.08
 
 Combat:CreateToggle({
    Name = "Auto Parry",
@@ -177,26 +187,20 @@ RunService.Heartbeat:Connect(function()
 
       if enemy ~= player and enemy.Character then
 
-         local hum = enemy.Character:FindFirstChildOfClass("Humanoid")
          local root = enemy.Character:FindFirstChild("HumanoidRootPart")
 
-         if hum and root then
+         if root then
 
             local dist = (hrp.Position - root.Position).Magnitude
 
             if dist <= ParryDistance then
 
-               for _,track in pairs(hum:GetPlayingAnimationTracks()) do
+               local tool = char:FindFirstChildOfClass("Tool")
 
-                  if track.Name:lower():find("attack") or track.Name:lower():find("slash") then
+               if tool then
 
-                     task.wait(ParryDelay)
-
-                     VirtualInputManager:SendKeyEvent(true,"F",false,game)
-                     task.wait(0.05)
-                     VirtualInputManager:SendKeyEvent(false,"F",false,game)
-
-                  end
+                  task.wait(math.random(40,90)/1000)
+                  tool:Activate()
 
                end
 
@@ -215,7 +219,7 @@ end)
 ------------------------------------------------
 
 local Magnet = false
-local MagnetDistance = 20
+local MagnetDistance = 18
 
 Combat:CreateToggle({
    Name = "Enemy Magnet",
@@ -255,112 +259,3 @@ RunService.Heartbeat:Connect(function()
    end
 
 end)
-
-------------------------------------------------
--- DASH TO ENEMY
-------------------------------------------------
-
-Combat:CreateButton({
-   Name = "Dash To Closest Enemy",
-   Callback = function()
-
-      local closest
-      local dist = math.huge
-
-      for _,v in pairs(Players:GetPlayers()) do
-
-         if v ~= player and v.Character then
-
-            local root = v.Character:FindFirstChild("HumanoidRootPart")
-
-            if root then
-
-               local mag = (player.Character.HumanoidRootPart.Position - root.Position).Magnitude
-
-               if mag < dist then
-                  dist = mag
-                  closest = root
-               end
-
-            end
-
-         end
-
-      end
-
-      if closest then
-         player.Character.HumanoidRootPart.CFrame = closest.CFrame * CFrame.new(0,0,-3)
-      end
-
-   end
-})
-
-------------------------------------------------
--- NOCLIP
-------------------------------------------------
-
-local Noclip = false
-
-PlayerTab:CreateToggle({
-   Name = "Noclip",
-   CurrentValue = false,
-   Callback = function(Value)
-      Noclip = Value
-   end
-})
-
-RunService.Stepped:Connect(function()
-
-   if Noclip and player.Character then
-
-      for _,v in pairs(player.Character:GetDescendants()) do
-
-         if v:IsA("BasePart") then
-            v.CanCollide = false
-         end
-
-      end
-
-   end
-
-end)
-
-------------------------------------------------
--- TELEPORT TO PLAYER
-------------------------------------------------
-
-local list = {}
-
-for _,v in pairs(Players:GetPlayers()) do
-   table.insert(list,v.Name)
-end
-
-Teleport:CreateDropdown({
-   Name = "Teleport To Player",
-   Options = list,
-   CurrentOption = list[1],
-
-   Callback = function(Value)
-
-      local target = Players:FindFirstChild(Value)
-
-      if target and target.Character then
-
-         player.Character.HumanoidRootPart.CFrame =
-         target.Character.HumanoidRootPart.CFrame
-
-      end
-
-   end
-})
-
-------------------------------------------------
--- RESET
-------------------------------------------------
-
-PlayerTab:CreateButton({
-   Name = "Reset Character",
-   Callback = function()
-      player.Character.Humanoid.Health = 0
-   end
-})
