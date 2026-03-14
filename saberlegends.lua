@@ -1,207 +1,115 @@
--- Oly Hub
--- Saber Legends
--- Version 2.6
-
+-- Services
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
-local UIS = game:GetService("UserInputService")
+local UserInputService = game:GetService("UserInputService")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local player = Players.LocalPlayer
+local Char = player.Character or player.CharacterAdded:Wait()
+local Humanoid = Char:WaitForChild("Humanoid")
+local Hrp = Char:WaitForChild("HumanoidRootPart")
 
-------------------------------------------------
--- LOAD RAYFIELD
-------------------------------------------------
+-- Repo Rayfield
+local repo = "https://raw.githubusercontent.com/deividcomsono/Obsidian/main/"
+local Library = loadstring(game:HttpGet(repo .. "Library.lua"))()
+local ThemeManager = loadstring(game:HttpGet(repo .. "addons/ThemeManager.lua"))()
+local SaveManager = loadstring(game:HttpGet(repo .. "addons/SaveManager.lua"))()
 
-local Rayfield = loadstring(game:HttpGet("https://sirius.menu/rayfield"))()
+-- Variables toggles
+local autoBlockEnabled = false
+local perfectBlockPercent = 80
+local parryChancePercent = 50
 
-------------------------------------------------
--- WINDOW
-------------------------------------------------
-
-local Window = Rayfield:CreateWindow({
-   Name = "Oly Hub - Saber Legends",
-   LoadingTitle = "Oly Hub",
-   LoadingSubtitle = "v2.6",
-   ConfigurationSaving = {
-      Enabled = false
-   }
+-- UI
+local Window = Library:CreateWindow({
+    Title = "Oly Hub - Saber Legends",
+    Footer = "by Oliver64-lab",
+    NotifySide = "Right",
+    ShowCustomCursor = false
 })
 
-------------------------------------------------
--- TABS
-------------------------------------------------
+local Tabs = {
+    Combat = Window:AddTab("Combat", "sword"),
+    Player = Window:AddTab("Player", "user"),
+    UI = Window:AddTab("UI Settings", "monitor"),
+}
 
-local Combat = Window:CreateTab("Combat")
-local PlayerTab = Window:CreateTab("Player")
+local CombatGroup = Tabs.Combat:AddLeftGroupbox("Combat Enhancements", "sword")
+local PlayerGroup = Tabs.Player:AddLeftGroupbox("Player", "zap")
 
-------------------------------------------------
--- SPEED
-------------------------------------------------
-
-PlayerTab:CreateSlider({
-   Name = "WalkSpeed",
-   Range = {16,35},
-   Increment = 1,
-   CurrentValue = 16,
-   Callback = function(Value)
-
-      local char = player.Character
-      if char then
-         local hum = char:FindFirstChildOfClass("Humanoid")
-         if hum then
-            hum.WalkSpeed = Value
-         end
-      end
-
-   end
+-- Perfect Block Slider
+CombatGroup:AddSlider("PerfectBlock", {
+    Text = "Perfect Block %",
+    Default = 80,
+    Min = 1,
+    Max = 100,
+    Rounding = 1,
+    Tooltip = "Chance to perform a perfect block",
+    Callback = function(value)
+        perfectBlockPercent = value
+    end
 })
 
-------------------------------------------------
--- INFINITE JUMP
-------------------------------------------------
-
-local InfJump = false
-
-PlayerTab:CreateToggle({
-   Name = "Infinite Jump",
-   CurrentValue = false,
-   Callback = function(Value)
-      InfJump = Value
-   end
+-- Parry Chance Slider
+CombatGroup:AddSlider("ParryChance", {
+    Text = "Parry Chance %",
+    Default = 50,
+    Min = 1,
+    Max = 100,
+    Rounding = 1,
+    Tooltip = "Chance to parry incoming attacks",
+    Callback = function(value)
+        parryChancePercent = value
+    end
 })
 
-UIS.JumpRequest:Connect(function()
-
-   if InfJump then
-      local hum = player.Character and player.Character:FindFirstChildOfClass("Humanoid")
-      if hum then
-         hum:ChangeState("Jumping")
-      end
-   end
-
-end)
-
-------------------------------------------------
--- AUTO ATTACK
-------------------------------------------------
-
-local AutoAttack = false
-
-Combat:CreateToggle({
-   Name = "Auto Attack",
-   CurrentValue = false,
-   Callback = function(Value)
-      AutoAttack = Value
-   end
+-- Auto Block Toggle
+CombatGroup:AddToggle("AutoBlock", {
+    Text = "Auto Block",
+    Default = false,
+    Tooltip = "Automatically block attacks",
+    Callback = function(value)
+        autoBlockEnabled = value
+    end
 })
 
-RunService.RenderStepped:Connect(function()
-
-   if not AutoAttack then return end
-
-   local char = player.Character
-   if not char then return end
-
-   local tool = char:FindFirstChildOfClass("Tool")
-
-   if tool then
-      tool:Activate()
-   end
-
-end)
-
-------------------------------------------------
--- SMART PERFECT BLOCK
-------------------------------------------------
-
-local PerfectBlock = false
-local BaseBlockChance = 60
-local LastBlock = 0
-local BlockCooldown = 0.4
-
-Combat:CreateToggle({
-   Name = "Smart Perfect Block",
-   CurrentValue = false,
-   Callback = function(Value)
-      PerfectBlock = Value
-   end
-})
-
-Combat:CreateSlider({
-   Name = "Base Block Chance",
-   Range = {1,100},
-   Increment = 1,
-   CurrentValue = 60,
-   Callback = function(Value)
-      BaseBlockChance = Value
-   end
-})
-
+-- Fonction Auto Block
 RunService.Heartbeat:Connect(function()
+    if autoBlockEnabled then
+        -- Exemple simple de block automatique basé sur % chance
+        if math.random(1,100) <= perfectBlockPercent then
+            -- Fire block event ou key press ici
+            local VirtualInputManager = game:GetService("VirtualInputManager")
+            VirtualInputManager:SendKeyEvent(true, Enum.KeyCode.Q, false, game)
+            VirtualInputManager:SendKeyEvent(false, Enum.KeyCode.Q, false, game)
+        end
 
-   if not PerfectBlock then return end
-   if tick() - LastBlock < BlockCooldown then return end
-
-   local char = player.Character
-   if not char then return end
-
-   local tool = char:FindFirstChildOfClass("Tool")
-
-   if tool then
-
-      if math.random(1,100) <= BaseBlockChance then
-         tool:Activate()
-         LastBlock = tick()
-      end
-
-   end
-
+        -- Parry Chance
+        if math.random(1,100) <= parryChancePercent then
+            -- Fire parry event ici
+            local VirtualInputManager = game:GetService("VirtualInputManager")
+            VirtualInputManager:SendKeyEvent(true, Enum.KeyCode.E, false, game)
+            VirtualInputManager:SendKeyEvent(false, Enum.KeyCode.E, false, game)
+        end
+    end
 end)
 
-------------------------------------------------
--- SMART AUTO PARRY
-------------------------------------------------
-
-local AutoParry = false
-local BaseParryChance = 60
-local LastParry = 0
-local ParryCooldown = 0.35
-
-Combat:CreateToggle({
-   Name = "Smart Auto Parry",
-   CurrentValue = false,
-   Callback = function(Value)
-      AutoParry = Value
-   end
-})
-
-Combat:CreateSlider({
-   Name = "Base Parry Chance",
-   Range = {1,100},
-   Increment = 1,
-   CurrentValue = 60,
-   Callback = function(Value)
-      BaseParryChance = Value
-   end
-})
-
-RunService.Heartbeat:Connect(function()
-
-   if not AutoParry then return end
-   if tick() - LastParry < ParryCooldown then return end
-
-   local char = player.Character
-   if not char then return end
-
-   local tool = char:FindFirstChildOfClass("Tool")
-
-   if tool then
-
-      if math.random(1,100) <= BaseParryChance then
-         tool:Activate()
-         LastParry = tick()
-      end
-
-   end
-
+-- UI Settings
+local MenuGroup = Tabs.UI:AddLeftGroupbox("Menu Options", "wrench")
+MenuGroup:AddToggle("ShowCustomCursor", {Text = "Custom Cursor", Default = false, Callback = function(Value)
+    Library.ShowCustomCursor = Value
+end})
+MenuGroup:AddDropdown("NotificationSide", {Values = {"Left", "Right"}, Default = "Right", Text = "Notification Side", Callback = function(Value)
+    Library:SetNotifySide(Value)
+end})
+MenuGroup:AddButton("Unload", function()
+    Library:Unload()
 end)
+
+ThemeManager:SetLibrary(Library)
+SaveManager:SetLibrary(Library)
+ThemeManager:SetFolder("OlyHub")
+SaveManager:SetFolder("OlyHub/configs")
+SaveManager:BuildConfigSection(Tabs.UI)
+ThemeManager:ApplyToTab(Tabs.UI)
+SaveManager:LoadAutoloadConfig()
