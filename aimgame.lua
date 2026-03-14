@@ -1,124 +1,227 @@
-
--- Oly Hub | Aim Assist Script
+-- Oly Hub | Mobile + PC Aim Assist
 
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
-local LocalPlayer = Players.LocalPlayer
+local UIS = game:GetService("UserInputService")
 local Camera = workspace.CurrentCamera
+local LocalPlayer = Players.LocalPlayer
 
+------------------------------------------------
 -- Rayfield UI
-local Rayfield = loadstring(game:HttpGet('https://sirius.menu/rayfield'))()
+------------------------------------------------
+
+local Rayfield = loadstring(game:HttpGet("https://sirius.menu/rayfield"))()
 
 local Window = Rayfield:CreateWindow({
-   Name = "Oly Hub | Aim Assist",
-   LoadingTitle = "Oly Hub",
-   LoadingSubtitle = "Aiming System"
+	Name = "Oly Hub | Aim System",
+	LoadingTitle = "Oly Hub",
+	LoadingSubtitle = "Mobile + PC"
 })
 
-local Tab = Window:CreateTab("Combat")
+local Combat = Window:CreateTab("Combat")
+
+------------------------------------------------
+-- Variables
+------------------------------------------------
 
 local AimAssist = false
-local AimStrength = 0.15
-local ESPEnabled = false
+local SilentAim = false
+local ESP = false
+local AimStrength = 0.03
+local FOV = 150
 
--- Aim Toggle
-Tab:CreateToggle({
-   Name = "Aim Assist",
-   CurrentValue = false,
-   Callback = function(Value)
-      AimAssist = Value
-   end
+------------------------------------------------
+-- UI
+------------------------------------------------
+
+Combat:CreateToggle({
+	Name = "Aim Assist",
+	CurrentValue = false,
+	Callback = function(v)
+		AimAssist = v
+	end
 })
 
--- Aim Strength
-Tab:CreateSlider({
-   Name = "Aim Strength",
-   Range = {1,100},
-   Increment = 1,
-   CurrentValue = 15,
-   Callback = function(Value)
-      AimStrength = Value/100
-   end
+Combat:CreateToggle({
+	Name = "Silent Aim",
+	CurrentValue = false,
+	Callback = function(v)
+		SilentAim = v
+	end
 })
 
--- ESP Toggle
-Tab:CreateToggle({
-   Name = "Player ESP",
-   CurrentValue = false,
-   Callback = function(Value)
-      ESPEnabled = Value
-   end
+Combat:CreateToggle({
+	Name = "ESP",
+	CurrentValue = false,
+	Callback = function(v)
+		ESP = v
+	end
 })
 
--- Find closest enemy
-local function GetClosest()
-   local closest = nil
-   local dist = math.huge
+Combat:CreateSlider({
+	Name = "Aim Strength",
+	Range = {1,20},
+	CurrentValue = 3,
+	Callback = function(v)
+		AimStrength = v/100
+	end
+})
 
-   for _,v in pairs(Players:GetPlayers()) do
-      if v ~= LocalPlayer and v.Character and v.Character:FindFirstChild("HumanoidRootPart") then
+Combat:CreateSlider({
+	Name = "Aim FOV",
+	Range = {50,400},
+	CurrentValue = 150,
+	Callback = function(v)
+		FOV = v
+	end
+})
 
-         local pos, onscreen = Camera:WorldToViewportPoint(v.Character.HumanoidRootPart.Position)
+------------------------------------------------
+-- Target Finder
+------------------------------------------------
 
-         if onscreen then
-            local magnitude = (Vector2.new(pos.X,pos.Y) - Vector2.new(Camera.ViewportSize.X/2,Camera.ViewportSize.Y/2)).Magnitude
+local function GetClosestTarget()
 
-            if magnitude < dist then
-               dist = magnitude
-               closest = v
-            end
-         end
+	local closest
+	local shortest = FOV
 
-      end
-   end
+	for _,plr in pairs(Players:GetPlayers()) do
 
-   return closest
+		if plr ~= LocalPlayer and plr.Character and plr.Character:FindFirstChild("HumanoidRootPart") then
+
+			local pos, visible = Camera:WorldToViewportPoint(plr.Character.HumanoidRootPart.Position)
+
+			if visible then
+
+				local dist = (Vector2.new(pos.X,pos.Y) -
+				Vector2.new(Camera.ViewportSize.X/2,Camera.ViewportSize.Y/2)).Magnitude
+
+				if dist < shortest then
+					shortest = dist
+					closest = plr
+				end
+
+			end
+
+		end
+
+	end
+
+	return closest
 end
 
--- Aim Assist
-RunService.RenderStepped:Connect(function()
+------------------------------------------------
+-- Detect input (mobile + pc)
+------------------------------------------------
 
-   if AimAssist then
+local aiming = false
 
-      local target = GetClosest()
+UIS.InputBegan:Connect(function(input)
 
-      if target and target.Character and target.Character:FindFirstChild("HumanoidRootPart") then
+	if input.UserInputType == Enum.UserInputType.MouseButton2 then
+		aiming = true
+	end
 
-         local targetPos = target.Character.HumanoidRootPart.Position
-
-         Camera.CFrame = Camera.CFrame:Lerp(
-            CFrame.new(Camera.CFrame.Position, targetPos),
-            AimStrength
-         )
-
-      end
-
-   end
+	if input.UserInputType == Enum.UserInputType.Touch then
+		aiming = true
+	end
 
 end)
 
--- ESP
+UIS.InputEnded:Connect(function(input)
+
+	if input.UserInputType == Enum.UserInputType.MouseButton2 then
+		aiming = false
+	end
+
+	if input.UserInputType == Enum.UserInputType.Touch then
+		aiming = false
+	end
+
+end)
+
+------------------------------------------------
+-- Aim Assist
+------------------------------------------------
+
 RunService.RenderStepped:Connect(function()
 
-   if ESPEnabled then
+	if AimAssist and aiming then
 
-      for _,v in pairs(Players:GetPlayers()) do
+		local target = GetClosestTarget()
 
-         if v ~= LocalPlayer and v.Character then
+		if target and target.Character then
 
-            if not v.Character:FindFirstChild("OlyESP") then
+			local part = target.Character:FindFirstChild("Head") or target.Character:FindFirstChild("HumanoidRootPart")
 
-               local highlight = Instance.new("Highlight")
-               highlight.Name = "OlyESP"
-               highlight.FillColor = Color3.fromRGB(255,0,0)
-               highlight.Parent = v.Character
+			if part then
 
-            end
+				local direction = (part.Position - Camera.CFrame.Position).Unit
+				local targetCF = CFrame.new(Camera.CFrame.Position, Camera.CFrame.Position + direction)
 
-         end
+				Camera.CFrame = Camera.CFrame:Lerp(targetCF, AimStrength)
 
-      end
+			end
 
-   end
+		end
+
+	end
+
+end)
+
+------------------------------------------------
+-- Silent Aim
+------------------------------------------------
+
+local old
+old = hookmetamethod(game,"__namecall",function(self,...)
+
+	local args = {...}
+	local method = getnamecallmethod()
+
+	if SilentAim and tostring(method) == "Raycast" then
+
+		local target = GetClosestTarget()
+
+		if target and target.Character and target.Character:FindFirstChild("Head") then
+
+			args[2] = (target.Character.Head.Position - args[1]).Unit * 1000
+			return old(self,unpack(args))
+
+		end
+
+	end
+
+	return old(self,...)
+
+end)
+
+------------------------------------------------
+-- ESP
+------------------------------------------------
+
+RunService.RenderStepped:Connect(function()
+
+	if ESP then
+
+		for _,plr in pairs(Players:GetPlayers()) do
+
+			if plr ~= LocalPlayer and plr.Character then
+
+				if not plr.Character:FindFirstChild("OlyESP") then
+
+					local h = Instance.new("Highlight")
+					h.Name = "OlyESP"
+					h.FillColor = Color3.fromRGB(255,0,0)
+					h.OutlineColor = Color3.fromRGB(255,255,255)
+					h.Parent = plr.Character
+
+				end
+
+			end
+
+		end
+
+	end
 
 end)
