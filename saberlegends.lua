@@ -8,13 +8,28 @@ local UIS = game:GetService("UserInputService")
 
 local player = Players.LocalPlayer
 
+------------------------------------------------
+-- LOAD RAYFIELD
+------------------------------------------------
+
 local Rayfield = loadstring(game:HttpGet("https://sirius.menu/rayfield"))()
+
+------------------------------------------------
+-- WINDOW
+------------------------------------------------
 
 local Window = Rayfield:CreateWindow({
    Name = "Oly Hub - Saber Legends",
    LoadingTitle = "Oly Hub",
-   LoadingSubtitle = "v2.6"
+   LoadingSubtitle = "v2.6",
+   ConfigurationSaving = {
+      Enabled = false
+   }
 })
+
+------------------------------------------------
+-- TABS
+------------------------------------------------
 
 local Combat = Window:CreateTab("Combat")
 local PlayerTab = Window:CreateTab("Player")
@@ -32,7 +47,10 @@ PlayerTab:CreateSlider({
 
       local char = player.Character
       if char then
-         char:FindFirstChildOfClass("Humanoid").WalkSpeed = Value
+         local hum = char:FindFirstChildOfClass("Humanoid")
+         if hum then
+            hum.WalkSpeed = Value
+         end
       end
 
    end
@@ -55,12 +73,10 @@ PlayerTab:CreateToggle({
 UIS.JumpRequest:Connect(function()
 
    if InfJump then
-
-      local hum = player.Character:FindFirstChildOfClass("Humanoid")
+      local hum = player.Character and player.Character:FindFirstChildOfClass("Humanoid")
       if hum then
          hum:ChangeState("Jumping")
       end
-
    end
 
 end)
@@ -100,7 +116,6 @@ end)
 
 local PerfectBlock = false
 local BaseBlockChance = 60
-local BlockDistance = 12
 local LastBlock = 0
 local BlockCooldown = 0.4
 
@@ -130,44 +145,13 @@ RunService.Heartbeat:Connect(function()
    local char = player.Character
    if not char then return end
 
-   local hrp = char:FindFirstChild("HumanoidRootPart")
-   if not hrp then return end
+   local tool = char:FindFirstChildOfClass("Tool")
 
-   for _,enemy in pairs(Players:GetPlayers()) do
+   if tool then
 
-      if enemy ~= player and enemy.Character then
-
-         local root = enemy.Character:FindFirstChild("HumanoidRootPart")
-         local hum = enemy.Character:FindFirstChildOfClass("Humanoid")
-
-         if root and hum then
-
-            local dist = (hrp.Position - root.Position).Magnitude
-            local Chance = BaseBlockChance
-
-            if dist < 10 then
-               Chance = Chance + 15
-            end
-
-            if dist < 6 then
-               Chance = Chance + 25
-            end
-
-            Chance = math.clamp(Chance,1,100)
-
-            if math.random(1,100) <= Chance then
-
-               local tool = char:FindFirstChildOfClass("Tool")
-
-               if tool then
-                  tool:Activate()
-                  LastBlock = tick()
-               end
-
-            end
-
-         end
-
+      if math.random(1,100) <= BaseBlockChance then
+         tool:Activate()
+         LastBlock = tick()
       end
 
    end
@@ -180,7 +164,6 @@ end)
 
 local AutoParry = false
 local BaseParryChance = 60
-local ParryDistance = 12
 local LastParry = 0
 local ParryCooldown = 0.35
 
@@ -210,87 +193,13 @@ RunService.Heartbeat:Connect(function()
    local char = player.Character
    if not char then return end
 
-   local hrp = char:FindFirstChild("HumanoidRootPart")
+   local tool = char:FindFirstChildOfClass("Tool")
 
-   for _,enemy in pairs(Players:GetPlayers()) do
+   if tool then
 
-      if enemy ~= player and enemy.Character then
-
-         local root = enemy.Character:FindFirstChild("HumanoidRootPart")
-         local hum = enemy.Character:FindFirstChildOfClass("Humanoid")
-
-         if root and hum then
-
-            local dist = (hrp.Position - root.Position).Magnitude
-            local Chance = BaseParryChance
-
-            if dist < 10 then
-               Chance = Chance + 20
-            end
-
-            if dist < 6 then
-               Chance = Chance + 30
-            end
-
-            Chance = math.clamp(Chance,1,100)
-
-            if math.random(1,100) <= Chance then
-
-               local tool = char:FindFirstChildOfClass("Tool")
-
-               if tool then
-                  tool:Activate()
-                  LastParry = tick()
-               end
-
-            end
-
-         end
-
-      end
-
-   end
-
-end)
-
-------------------------------------------------
--- ENEMY MAGNET
-------------------------------------------------
-
-local Magnet = false
-local MagnetDistance = 18
-
-Combat:CreateToggle({
-   Name = "Enemy Magnet",
-   CurrentValue = false,
-   Callback = function(Value)
-      Magnet = Value
-   end
-})
-
-RunService.Heartbeat:Connect(function()
-
-   if not Magnet then return end
-
-   local char = player.Character
-   if not char then return end
-
-   local hrp = char:FindFirstChild("HumanoidRootPart")
-
-   for _,enemy in pairs(Players:GetPlayers()) do
-
-      if enemy ~= player and enemy.Character then
-
-         local root = enemy.Character:FindFirstChild("HumanoidRootPart")
-
-         if root then
-
-            if (hrp.Position - root.Position).Magnitude <= MagnetDistance then
-               root.CFrame = hrp.CFrame * CFrame.new(0,0,-3)
-            end
-
-         end
-
+      if math.random(1,100) <= BaseParryChance then
+         tool:Activate()
+         LastParry = tick()
       end
 
    end
