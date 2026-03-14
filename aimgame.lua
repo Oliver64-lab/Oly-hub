@@ -1,4 +1,4 @@
--- Oly Hub | Mobile + PC Aim Assist
+-- Oly Hub | Stable Aim Assist
 
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
@@ -7,15 +7,15 @@ local Camera = workspace.CurrentCamera
 local LocalPlayer = Players.LocalPlayer
 
 ------------------------------------------------
--- Rayfield UI
+-- UI
 ------------------------------------------------
 
 local Rayfield = loadstring(game:HttpGet("https://sirius.menu/rayfield"))()
 
 local Window = Rayfield:CreateWindow({
-	Name = "Oly Hub | Aim System",
+	Name = "Oly Hub | Shooter",
 	LoadingTitle = "Oly Hub",
-	LoadingSubtitle = "Mobile + PC"
+	LoadingSubtitle = "Aim System"
 })
 
 local Combat = Window:CreateTab("Combat")
@@ -25,13 +25,12 @@ local Combat = Window:CreateTab("Combat")
 ------------------------------------------------
 
 local AimAssist = false
-local SilentAim = false
 local ESP = false
-local AimStrength = 0.03
-local FOV = 150
+local AimStrength = 0.12
+local FOV = 200
 
 ------------------------------------------------
--- UI
+-- Aim Assist Toggle
 ------------------------------------------------
 
 Combat:CreateToggle({
@@ -42,13 +41,40 @@ Combat:CreateToggle({
 	end
 })
 
-Combat:CreateToggle({
-	Name = "Silent Aim",
-	CurrentValue = false,
+Combat:CreateSlider({
+	Name = "Aim Strength",
+	Range = {5,40},
+	CurrentValue = 12,
 	Callback = function(v)
-		SilentAim = v
+		AimStrength = v/100
 	end
 })
+
+Combat:CreateSlider({
+	Name = "Aim FOV",
+	Range = {50,400},
+	CurrentValue = 200,
+	Callback = function(v)
+		FOV = v
+	end
+})
+
+------------------------------------------------
+-- POV / Camera FOV
+------------------------------------------------
+
+Combat:CreateSlider({
+	Name = "POV (Camera FOV)",
+	Range = {70,120},
+	CurrentValue = 80,
+	Callback = function(v)
+		Camera.FieldOfView = v
+	end
+})
+
+------------------------------------------------
+-- ESP
+------------------------------------------------
 
 Combat:CreateToggle({
 	Name = "ESP",
@@ -58,29 +84,11 @@ Combat:CreateToggle({
 	end
 })
 
-Combat:CreateSlider({
-	Name = "Aim Strength",
-	Range = {1,20},
-	CurrentValue = 3,
-	Callback = function(v)
-		AimStrength = v/100
-	end
-})
-
-Combat:CreateSlider({
-	Name = "Aim FOV",
-	Range = {50,400},
-	CurrentValue = 150,
-	Callback = function(v)
-		FOV = v
-	end
-})
-
 ------------------------------------------------
--- Target Finder
+-- Target finder
 ------------------------------------------------
 
-local function GetClosestTarget()
+local function GetClosest()
 
 	local closest
 	local shortest = FOV
@@ -111,14 +119,14 @@ local function GetClosestTarget()
 end
 
 ------------------------------------------------
--- Detect input (mobile + pc)
+-- Input detection (mobile + pc)
 ------------------------------------------------
 
 local aiming = false
 
 UIS.InputBegan:Connect(function(input)
 
-	if input.UserInputType == Enum.UserInputType.MouseButton2 then
+	if input.UserInputType == Enum.UserInputType.MouseButton1 then
 		aiming = true
 	end
 
@@ -130,7 +138,7 @@ end)
 
 UIS.InputEnded:Connect(function(input)
 
-	if input.UserInputType == Enum.UserInputType.MouseButton2 then
+	if input.UserInputType == Enum.UserInputType.MouseButton1 then
 		aiming = false
 	end
 
@@ -148,51 +156,24 @@ RunService.RenderStepped:Connect(function()
 
 	if AimAssist and aiming then
 
-		local target = GetClosestTarget()
+		local target = GetClosest()
 
 		if target and target.Character then
 
-			local part = target.Character:FindFirstChild("Head") or target.Character:FindFirstChild("HumanoidRootPart")
+			local head = target.Character:FindFirstChild("Head") or target.Character:FindFirstChild("HumanoidRootPart")
 
-			if part then
+			if head then
 
-				local direction = (part.Position - Camera.CFrame.Position).Unit
-				local targetCF = CFrame.new(Camera.CFrame.Position, Camera.CFrame.Position + direction)
+				local direction = (head.Position - Camera.CFrame.Position).Unit
+				local newCF = CFrame.new(Camera.CFrame.Position, Camera.CFrame.Position + direction)
 
-				Camera.CFrame = Camera.CFrame:Lerp(targetCF, AimStrength)
+				Camera.CFrame = Camera.CFrame:Lerp(newCF, AimStrength)
 
 			end
 
 		end
 
 	end
-
-end)
-
-------------------------------------------------
--- Silent Aim
-------------------------------------------------
-
-local old
-old = hookmetamethod(game,"__namecall",function(self,...)
-
-	local args = {...}
-	local method = getnamecallmethod()
-
-	if SilentAim and tostring(method) == "Raycast" then
-
-		local target = GetClosestTarget()
-
-		if target and target.Character and target.Character:FindFirstChild("Head") then
-
-			args[2] = (target.Character.Head.Position - args[1]).Unit * 1000
-			return old(self,unpack(args))
-
-		end
-
-	end
-
-	return old(self,...)
 
 end)
 
